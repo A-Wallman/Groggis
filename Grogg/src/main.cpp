@@ -1,8 +1,8 @@
 #include <Arduino.h>
 
-#define rotCLK1 DD2
-#define rotDT1 DD3
-#define rotSW1 DD4
+#define rotCLK1 PD2
+#define rotDT1 PD3
+#define rotSW1 PD4
 
 int counter = 0;
 int lastStateCLK = HIGH;
