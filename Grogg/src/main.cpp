@@ -16,6 +16,8 @@ void setup() {
   pinMode(rotCLK1, INPUT);
   pinMode(rotDT1, INPUT);
   pinMode(rotSW1, INPUT_PULLUP);
+  Serial.begin(9600);
+  Serial.println("Setup complete");
 }
 
 void loop() {
