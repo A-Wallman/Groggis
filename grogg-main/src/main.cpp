@@ -19,7 +19,7 @@
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 
-#define MAXDRYCK_1 30
+#define MAX_VOLUME_1 30
 
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -66,6 +66,10 @@ void refreshDisplay(int screen, int counter) {
   display.display();
 }
 
+int pumpDurationms(int value) {
+  return value; //TBA: kalibrera med pumparna och se hur pumptid förhåller sig till volym i cl
+}
+
 
 void setup() {
   Serial.begin(9600);
@@ -88,7 +92,7 @@ void setup() {
 void loop() {
   currentStateCLK = digitalRead(rotCLK1);
   if (currentStateCLK != lastStateCLK) {
-    if (digitalRead(rotDT1) != currentStateCLK && counter < MAXDRYCK_1) {
+    if (digitalRead(rotDT1) != currentStateCLK && counter < MAX_VOLUME_1) {
       //MEDURS ROTATION
       counter++;
     } else if (counter > 0 && digitalRead(rotDT1) == currentStateCLK) {
