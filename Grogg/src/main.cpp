@@ -3,6 +3,10 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+#define RIGHT 0
+#define UP 1
+#define LEFT 2
+#define DOWN 3
 
 #define rotCLK1 2
 #define rotDT1 3
@@ -14,33 +18,51 @@
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
+
+#define MAXDRYCK_1 30
+
+
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 int counter = 0;
 int lastStateCLK = HIGH;
 int currentStateCLK;
-int MAXDRYCK1 = 30; // max 30 cl
 
 // put function declarations here:
 
 
-void displayPrintCl() {
-  int x,y,x1,y1,w,h;
-  String text = "cl";
+void displayAlignAndPrint(String text, int xAlign, int yAlign) {
+  int16_t x=0,y=0,x1,y1;
+  uint16_t w,h;
+  int cursX,cursY;
 
-  /*display.setTextSize(4);
-  display.getTextBounds(text, x, y, &x1, &y1, &w, &h);*/
+  display.getTextBounds(text.c_str(), x, y, &x1, &y1, &w, &h);
 
-  display.setCursor(80,28);
-  display.println("cl");
+  switch (xAlign) {
+    case LEFT:
+      cursX =0;
+      break;
+    case RIGHT:
+      cursX=SCREEN_WIDTH-w;
+      break;
+  }
+  switch (yAlign) {
+    case UP:
+      cursY=0;
+      break;
+    case DOWN:
+      cursY=SCREEN_HEIGHT-h;
+      break;
+  }
+
+  display.setCursor(cursX,cursY);
+  display.println(text);
 }
 
-void updateDisplay(int screen, int counter) {
+void refreshDisplay(int screen, int counter) {
   display.clearDisplay();
-  displayPrintCl();
-  
-  display.setCursor(10,28);
-  display.println(String(counter));
+  displayAlignAndPrint("cl", RIGHT, DOWN);
+  displayAlignAndPrint(String(counter),LEFT,DOWN);
   display.display();
 }
 
@@ -58,16 +80,15 @@ void setup() {
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
   display.setTextSize(4);
-  displayPrintCl();
-  display.setCursor(10,28);
-  display.println(counter);
+  displayAlignAndPrint("cl",RIGHT,DOWN);
+  displayAlignAndPrint(String(counter),LEFT,DOWN);
   display.display();
 }
 
 void loop() {
   currentStateCLK = digitalRead(rotCLK1);
   if (currentStateCLK != lastStateCLK) {
-    if (digitalRead(rotDT1) != currentStateCLK && counter < MAXDRYCK1) {
+    if (digitalRead(rotDT1) != currentStateCLK && counter < MAXDRYCK_1) {
       //MEDURS ROTATION
       counter++;
     } else if (counter > 0 && digitalRead(rotDT1) == currentStateCLK) {
@@ -75,7 +96,7 @@ void loop() {
       counter--;
     }
     Serial.println(counter);
-    updateDisplay(0, counter);
+    refreshDisplay(0, counter);
   }
   lastStateCLK = currentStateCLK;
   // put your main code here, to run repeatedly:
