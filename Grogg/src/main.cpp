@@ -22,16 +22,28 @@ int currentStateCLK;
 int MAXDRYCK1 = 30; // max 30 cl
 
 // put function declarations here:
+
+
+void displayPrintCl() {
+  int x,y,x1,y1,w,h;
+  String text = "cl";
+
+  /*display.setTextSize(4);
+  display.getTextBounds(text, x, y, &x1, &y1, &w, &h);*/
+
+  display.setCursor(80,28);
+  display.println("cl");
+}
+
 void updateDisplay(int screen, int counter) {
-  display.setCursor(12,28);
   display.clearDisplay();
-  display.println(String(counter) + " cl");
+  displayPrintCl();
+  
+  display.setCursor(10,28);
+  display.println(String(counter));
   display.display();
 }
 
-void displayPrintCl() {
-  
-}
 
 void setup() {
   Serial.begin(9600);
@@ -46,8 +58,9 @@ void setup() {
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
   display.setTextSize(4);
-  display.setCursor(16,28);
-  display.println(String(counter) + " cl");
+  displayPrintCl();
+  display.setCursor(10,28);
+  display.println(counter);
   display.display();
 }
 
