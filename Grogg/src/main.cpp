@@ -7,6 +7,7 @@
 int counter = 0;
 int lastStateCLK = HIGH;
 int currentStateCLK;
+int MAXDRYCK1 = 30; // max 30 cl
 
 // put function declarations here:
 int myFunction(int, int);
@@ -23,10 +24,10 @@ void setup() {
 void loop() {
   currentStateCLK = digitalRead(rotCLK1);
   if (currentStateCLK != lastStateCLK) {
-    if (digitalRead(rotDT1) != currentStateCLK) {
+    if (digitalRead(rotDT1) != currentStateCLK && counter < MAXDRYCK1) {
       //MEDURS ROTATION
       counter++;
-    } else {
+    } else if (counter > 0 && digitalRead(rotDT1) == currentStateCLK) {
       //MOTURS ROTATION
       counter--;
     }
