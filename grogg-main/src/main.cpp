@@ -2,6 +2,9 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include "RotaryHandling.h"
+
+#define BAUD 9600
 
 #define RIGHT 0
 #define UP 1
@@ -84,7 +87,7 @@ void displayAlignAndPrint(String text, int xAlign, int yAlign) {
   display.println(text);
 }
 
-void refreshDisplay(int screen, int number) {
+void refreshDisplay(int number) {
   display.clearDisplay();
   displayAlignAndPrint(DISPLAY_UNIT, RIGHT, DOWN);
   displayAlignAndPrint(String(number),LEFT,DOWN);
@@ -121,7 +124,7 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
     delay(5); 
 
     Serial.println(*counter);
-    refreshDisplay(0, *counter);
+    refreshDisplay(*counter);
     
   }
   
@@ -142,7 +145,7 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
 
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(BAUD);
 
   // vrid nr1
   pinMode(ROT_CLK_A, INPUT);
