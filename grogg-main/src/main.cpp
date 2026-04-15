@@ -118,7 +118,7 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
       *counter-=COUNTER_STEPSIZE;
     }
     // Debounce delay?
-    delay(2); 
+    delay(5); 
 
     Serial.println(*counter);
     refreshDisplay(0, *counter);
