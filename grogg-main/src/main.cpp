@@ -35,8 +35,8 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 int counter_A = 0;
-int lastStateCLK = HIGH;
-int currentStateCLK;
+int CLKlastState_A = HIGH;
+int CLKcurrentState_A;
 
 // put function declarations here:
 
@@ -80,15 +80,39 @@ int pumpDurationClToMs(int value) {
   return value; //TBA: kalibrera med pumparna och se hur pumptid förhåller sig till volym i cl
 }
 
+void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
+  int* counter, int* CLKlastState, int* CLKcurrentState) {
+    
+  *CLKcurrentState = digitalRead(rotCLK);
+  if (*CLKcurrentState != *CLKlastState) {
 
+    if (digitalRead(rotDT) != *CLKcurrentState && *counter < maxValue) {
+      //MEDURS ROTATION
+      *counter+=COUNTER_STEPSIZE;
+    } else if (digitalRead(rotDT) == *CLKcurrentState && *counter > 0) {
+      //MOTURS ROTATION
+      *counter-=COUNTER_STEPSIZE;
+    }
+    // Optional: Debounce logic for robustness
+    delay(2); // Small delay to help with debouncing
+
+    Serial.println(*counter);
+    refreshDisplay(0, *counter);
+    
+  }
+  
+  *CLKlastState = *CLKcurrentState;
+  }
 
 void setup() {
   Serial.begin(9600);
+
   // vrid nr1
   pinMode(rotCLK_A, INPUT);
   pinMode(rotDT_A, INPUT);
   pinMode(rotSW_A, INPUT_PULLUP);
 
+  //vrid nr2
   pinMode(rotCLK_B,INPUT);
   pinMode(rotDT_B,INPUT);
   pinMode(rotSW_B,INPUT_PULLUP);
@@ -104,7 +128,10 @@ void setup() {
 }
 
 void loop() {
-  currentStateCLK = digitalRead(rotCLK_A);
+  rotaryHandler(rotCLK_A, rotDT_A, rotSW_A, MAX_VALUE_A,
+    &counter_A, &CLKlastState_A, &CLKcurrentState_A);
+
+  /*currentStateCLK = digitalRead(rotCLK_A);
   if (currentStateCLK != lastStateCLK) {
     if (digitalRead(rotDT_A) != currentStateCLK && counter_A < MAX_VALUE_A) {
       //MEDURS ROTATION
@@ -116,7 +143,7 @@ void loop() {
     Serial.println(counter_A);
     refreshDisplay(0, counter_A);
   }
-  lastStateCLK = currentStateCLK;
+  lastStateCLK = currentStateCLK;*/
 
 
   // put your main code here, to run repeatedly:
