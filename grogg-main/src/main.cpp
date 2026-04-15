@@ -117,8 +117,8 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
       //MOTURS ROTATION
       *counter-=COUNTER_STEPSIZE;
     }
-    // Optional: Debounce logic for robustness
-    delay(2); // Small delay to help with debouncing
+    // Debounce delay?
+    delay(2); 
 
     Serial.println(*counter);
     refreshDisplay(0, *counter);
