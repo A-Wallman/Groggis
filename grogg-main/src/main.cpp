@@ -8,18 +8,18 @@
 #define LEFT 2
 #define DOWN 3
 
-#define rotCLK_A 2
-#define rotDT_A 3
-#define rotSW_A 4
+#define ROT_CLK_A 2
+#define ROT_DT_A 3
+#define ROT_SW_A 4
 
-#define rotCLK_B 5
-#define rotDT_B 6
-#define rotSW_B 7
+#define ROT_CLK_B 5
+#define ROT_DT_B 6
+#define ROT_SW_B 7
 
 
 //OANVÄNT
-#define scrnSDA A5
-#define scrnSCK A4
+#define SCRN_SDA_A A5
+#define SCRN_SCK_A A4
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -108,14 +108,14 @@ void setup() {
   Serial.begin(9600);
 
   // vrid nr1
-  pinMode(rotCLK_A, INPUT);
-  pinMode(rotDT_A, INPUT);
-  pinMode(rotSW_A, INPUT_PULLUP);
+  pinMode(ROT_CLK_A, INPUT);
+  pinMode(ROT_DT_A, INPUT);
+  pinMode(ROT_SW_A, INPUT_PULLUP);
 
   //vrid nr2
-  pinMode(rotCLK_B,INPUT);
-  pinMode(rotDT_B,INPUT);
-  pinMode(rotSW_B,INPUT_PULLUP);
+  pinMode(ROT_CLK_B,INPUT);
+  pinMode(ROT_DT_B,INPUT);
+  pinMode(ROT_SW_B,INPUT_PULLUP);
 
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -128,22 +128,8 @@ void setup() {
 }
 
 void loop() {
-  rotaryHandler(rotCLK_A, rotDT_A, rotSW_A, MAX_VALUE_A,
+  rotaryHandler(ROT_CLK_A, ROT_DT_A, ROT_SW_A, MAX_VALUE_A,
     &counter_A, &CLKlastState_A, &CLKcurrentState_A);
-
-  /*currentStateCLK = digitalRead(rotCLK_A);
-  if (currentStateCLK != lastStateCLK) {
-    if (digitalRead(rotDT_A) != currentStateCLK && counter_A < MAX_VALUE_A) {
-      //MEDURS ROTATION
-      counter_A+=COUNTER_STEPSIZE;
-    } else if (counter_A > 0 && digitalRead(rotDT_A) == currentStateCLK) {
-      //MOTURS ROTATION
-      counter_A-=COUNTER_STEPSIZE;
-    }
-    Serial.println(counter_A);
-    refreshDisplay(0, counter_A);
-  }
-  lastStateCLK = currentStateCLK;*/
 
 
   // put your main code here, to run repeatedly:
