@@ -34,19 +34,13 @@
 #define COUNTER_STEPSIZE 50
 
 
-
 int counter_A = 0;
 int CLKlastState_A = HIGH;
 int SWlastState_A = HIGH;
 
 
-
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-
-
-
-// put function declarations here:
 
 int rotPumpMap(int rotCLK) {
 
@@ -133,10 +127,9 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
   
   *CLKlastState = CLKcurrentState;
   
-  // Button press detection for rotary encoder switch
+  // Knapptryck
   int SWcurrentState = digitalRead(rotSW);
   if (SWcurrentState == LOW && *SWlastState == HIGH) {
-    // Button pressed (HIGH to LOW transition due to INPUT_PULLUP)
     delay(20); // Debounce delay
     if (digitalRead(rotSW) == LOW) {
       Serial.println("Button pressed");
@@ -174,15 +167,10 @@ void setup() {
   displayAlignAndPrint(String(counter_A),LEFT,DOWN);
   display.display();
 
-  // Initialize dictionary 
 }
 
 void loop() {
   rotaryHandler(ROT_CLK_A, ROT_DT_A, ROT_SW_A, MAX_VALUE_A,
     &counter_A, &CLKlastState_A, &SWlastState_A);
 
-
-  // put your main code here, to run repeatedly:
-  
- 
 }
