@@ -42,7 +42,7 @@ int SWlastState_A = HIGH;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 
-int rotPumpMap(int rotCLK) {
+int rotPumpMap(int rotCLK) { //kartlägger skruvgrej X till pump X
 
   switch (rotCLK) {
     case ROT_CLK_A:
