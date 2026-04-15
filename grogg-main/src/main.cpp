@@ -17,7 +17,7 @@
 #define ROT_SW_B 7
 
 #define PUMP_IN_A 10
-#define PUMP_IN_B NULL
+#define PUMP_IN_B -1
 
 //OANVÄNT
 #define SCRN_SDA_A A5
@@ -58,7 +58,7 @@ int rotPumpMap(int rotCLK) {
       return PUMP_IN_B;
 
     default: 
-      return NULL;
+      return -1;
   }
 } 
 
