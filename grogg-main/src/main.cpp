@@ -34,7 +34,7 @@
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-int counterA = 0;
+int counter_A = 0;
 int lastStateCLK = HIGH;
 int currentStateCLK;
 
@@ -69,10 +69,10 @@ void displayAlignAndPrint(String text, int xAlign, int yAlign) {
   display.println(text);
 }
 
-void refreshDisplay(int screen, int counter) {
+void refreshDisplay(int screen, int number) {
   display.clearDisplay();
   displayAlignAndPrint(DISPLAY_UNIT, RIGHT, DOWN);
-  displayAlignAndPrint(String(counter),LEFT,DOWN);
+  displayAlignAndPrint(String(number),LEFT,DOWN);
   display.display();
 }
 
@@ -99,22 +99,22 @@ void setup() {
   display.setTextColor(SSD1306_WHITE);
   display.setTextSize(DISPLAY_TEXTSIZE);
   displayAlignAndPrint(DISPLAY_UNIT,RIGHT,DOWN);
-  displayAlignAndPrint(String(counter),LEFT,DOWN);
+  displayAlignAndPrint(String(counter_A),LEFT,DOWN);
   display.display();
 }
 
 void loop() {
   currentStateCLK = digitalRead(rotCLK_A);
   if (currentStateCLK != lastStateCLK) {
-    if (digitalRead(rotDT_A) != currentStateCLK && counter < MAX_VALUE_A) {
+    if (digitalRead(rotDT_A) != currentStateCLK && counter_A < MAX_VALUE_A) {
       //MEDURS ROTATION
-      counterA+=COUNTER_STEPSIZE;
-    } else if (counter > 0 && digitalRead(rotDT_A) == currentStateCLK) {
+      counter_A+=COUNTER_STEPSIZE;
+    } else if (counter_A > 0 && digitalRead(rotDT_A) == currentStateCLK) {
       //MOTURS ROTATION
-      counterA-=COUNTER_STEPSIZE;
+      counter_A-=COUNTER_STEPSIZE;
     }
-    Serial.println(counter);
-    refreshDisplay(0, counter);
+    Serial.println(counter_A);
+    refreshDisplay(0, counter_A);
   }
   lastStateCLK = currentStateCLK;
 
