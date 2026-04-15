@@ -31,12 +31,15 @@
 #define DISPLAY_UNIT "ms"
 #define COUNTER_STEPSIZE 50
 
+int counter_A = 0;
+int CLKlastState_A = HIGH;
+int SWlastState_A = HIGH;
+
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-int counter_A = 0;
-int CLKlastState_A = HIGH;
-int CLKcurrentState_A;
+
+
 
 // put function declarations here:
 
@@ -81,15 +84,15 @@ int pumpDurationClToMs(int value) {
 }
 
 void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
-  int* counter, int* CLKlastState, int* CLKcurrentState) {
+  int* counter, int* CLKlastState, int* SWlastState) {
     
-  *CLKcurrentState = digitalRead(rotCLK);
-  if (*CLKcurrentState != *CLKlastState) {
+  int CLKcurrentState = digitalRead(rotCLK);
+  if (CLKcurrentState != *CLKlastState) {
 
-    if (digitalRead(rotDT) != *CLKcurrentState && *counter < maxValue) {
+    if (digitalRead(rotDT) != CLKcurrentState && *counter < maxValue) {
       //MEDURS ROTATION
       *counter+=COUNTER_STEPSIZE;
-    } else if (digitalRead(rotDT) == *CLKcurrentState && *counter > 0) {
+    } else if (digitalRead(rotDT) == CLKcurrentState && *counter > 0) {
       //MOTURS ROTATION
       *counter-=COUNTER_STEPSIZE;
     }
@@ -101,8 +104,19 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
     
   }
   
-  *CLKlastState = *CLKcurrentState;
+  *CLKlastState = CLKcurrentState;
+  
+  // Button press detection for rotary encoder switch
+  int SWcurrentState = digitalRead(rotSW);
+  if (SWcurrentState == LOW && *SWlastState == HIGH) {
+    // Button pressed (HIGH to LOW transition due to INPUT_PULLUP)
+    delay(20); // Debounce delay
+    if (digitalRead(rotSW) == LOW) {
+      Serial.println("Button pressed");
+    }
   }
+  *SWlastState = SWcurrentState;
+}
 
 void setup() {
   Serial.begin(9600);
@@ -129,7 +143,7 @@ void setup() {
 
 void loop() {
   rotaryHandler(ROT_CLK_A, ROT_DT_A, ROT_SW_A, MAX_VALUE_A,
-    &counter_A, &CLKlastState_A, &CLKcurrentState_A);
+    &counter_A, &CLKlastState_A, &SWlastState_A);
 
 
   // put your main code here, to run repeatedly:
