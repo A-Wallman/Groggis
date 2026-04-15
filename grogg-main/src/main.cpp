@@ -12,6 +12,13 @@
 #define rotDT1 3
 #define rotSW1 4
 
+#define rotCLK2 5
+#define rotDT2 6
+#define rotSW2 7
+
+
+
+//OANVÄNT
 #define scrnSDA A5
 #define scrnSCK A4
 
@@ -19,7 +26,11 @@
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 
-#define MAX_VOLUME_1 30
+#define MAX_VALUE_1 10000
+
+#define DISPLAY_TEXTSIZE 2
+#define DISPLAY_UNIT "ms"
+#define COUNTER_STEPSIZE 50
 
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -61,30 +72,34 @@ void displayAlignAndPrint(String text, int xAlign, int yAlign) {
 
 void refreshDisplay(int screen, int counter) {
   display.clearDisplay();
-  displayAlignAndPrint("cl", RIGHT, DOWN);
+  displayAlignAndPrint(DISPLAY_UNIT, RIGHT, DOWN);
   displayAlignAndPrint(String(counter),LEFT,DOWN);
   display.display();
 }
 
-int pumpDurationms(int value) {
+int pumpDurationClToMs(int value) {
   return value; //TBA: kalibrera med pumparna och se hur pumptid förhåller sig till volym i cl
 }
 
 
+
 void setup() {
   Serial.begin(9600);
-  // put your setup code here, to run once:
+  // vrid nr1
   pinMode(rotCLK1, INPUT);
   pinMode(rotDT1, INPUT);
   pinMode(rotSW1, INPUT_PULLUP);
 
+  pinMode(rotCLK2,INPUT);
+  pinMode(rotDT2,INPUT);
+  pinMode(rotSW2,INPUT_PULLUP);
 
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
-  display.setTextSize(4);
-  displayAlignAndPrint("cl",RIGHT,DOWN);
+  display.setTextSize(DISPLAY_TEXTSIZE);
+  displayAlignAndPrint(DISPLAY_UNIT,RIGHT,DOWN);
   displayAlignAndPrint(String(counter),LEFT,DOWN);
   display.display();
 }
@@ -92,17 +107,19 @@ void setup() {
 void loop() {
   currentStateCLK = digitalRead(rotCLK1);
   if (currentStateCLK != lastStateCLK) {
-    if (digitalRead(rotDT1) != currentStateCLK && counter < MAX_VOLUME_1) {
+    if (digitalRead(rotDT1) != currentStateCLK && counter < MAX_VALUE_1) {
       //MEDURS ROTATION
-      counter++;
+      counter+=COUNTER_STEPSIZE;
     } else if (counter > 0 && digitalRead(rotDT1) == currentStateCLK) {
       //MOTURS ROTATION
-      counter--;
+      counter-=COUNTER_STEPSIZE;
     }
     Serial.println(counter);
     refreshDisplay(0, counter);
   }
   lastStateCLK = currentStateCLK;
+
+
   // put your main code here, to run repeatedly:
   
  
