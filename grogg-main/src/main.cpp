@@ -16,6 +16,8 @@
 #define ROT_DT_B 6
 #define ROT_SW_B 7
 
+#define PUMP_IN_A 10
+#define PUMP_IN_B NULL
 
 //OANVÄNT
 #define SCRN_SDA_A A5
@@ -31,9 +33,12 @@
 #define DISPLAY_UNIT "ms"
 #define COUNTER_STEPSIZE 50
 
+
+
 int counter_A = 0;
 int CLKlastState_A = HIGH;
 int SWlastState_A = HIGH;
+
 
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -43,6 +48,19 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // put function declarations here:
 
+int rotPumpMap(int rotCLK) {
+
+  switch (rotCLK) {
+    case ROT_CLK_A:
+      return PUMP_IN_A;
+
+    case ROT_CLK_B:
+      return PUMP_IN_B;
+
+    default: 
+      return NULL;
+  }
+} 
 
 void displayAlignAndPrint(String text, int xAlign, int yAlign) {
   int16_t x=0,y=0,x1,y1;
@@ -83,6 +101,14 @@ int pumpDurationClToMs(int value) {
   return value; //TBA: kalibrera med pumparna och se hur pumptid förhåller sig till volym i cl
 }
 
+
+void firePump(int pumpIn, int duration) {
+  Serial.print(String(pumpIn)+" "+String(duration));
+  digitalWrite(pumpIn,HIGH);
+  delay(duration);
+  digitalWrite(pumpIn,LOW);
+}
+
 void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
   int* counter, int* CLKlastState, int* SWlastState) {
     
@@ -113,10 +139,13 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
     delay(20); // Debounce delay
     if (digitalRead(rotSW) == LOW) {
       Serial.println("Button pressed");
+      int pump = rotPumpMap(rotCLK);
+      firePump(pump,*counter);
     }
   }
   *SWlastState = SWcurrentState;
 }
+
 
 void setup() {
   Serial.begin(9600);
@@ -131,7 +160,11 @@ void setup() {
   pinMode(ROT_DT_B,INPUT);
   pinMode(ROT_SW_B,INPUT_PULLUP);
 
+  //pump nr1
+  digitalWrite(PUMP_IN_A,LOW);
+  pinMode(PUMP_IN_A, OUTPUT);
 
+  //skärm nr 1
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
@@ -139,6 +172,8 @@ void setup() {
   displayAlignAndPrint(DISPLAY_UNIT,RIGHT,DOWN);
   displayAlignAndPrint(String(counter_A),LEFT,DOWN);
   display.display();
+
+  // Initialize dictionary 
 }
 
 void loop() {
