@@ -8,14 +8,13 @@
 #define LEFT 2
 #define DOWN 3
 
-#define rotCLK1 2
-#define rotDT1 3
-#define rotSW1 4
+#define rotCLK_A 2
+#define rotDT_A 3
+#define rotSW_A 4
 
-#define rotCLK2 5
-#define rotDT2 6
-#define rotSW2 7
-
+#define rotCLK_B 5
+#define rotDT_B 6
+#define rotSW_B 7
 
 
 //OANVÄNT
@@ -26,7 +25,7 @@
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 
-#define MAX_VALUE_1 10000
+#define MAX_VALUE_A 10000
 
 #define DISPLAY_TEXTSIZE 2
 #define DISPLAY_UNIT "ms"
@@ -35,7 +34,7 @@
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-int counter = 0;
+int counterA = 0;
 int lastStateCLK = HIGH;
 int currentStateCLK;
 
@@ -86,13 +85,13 @@ int pumpDurationClToMs(int value) {
 void setup() {
   Serial.begin(9600);
   // vrid nr1
-  pinMode(rotCLK1, INPUT);
-  pinMode(rotDT1, INPUT);
-  pinMode(rotSW1, INPUT_PULLUP);
+  pinMode(rotCLK_A, INPUT);
+  pinMode(rotDT_A, INPUT);
+  pinMode(rotSW_A, INPUT_PULLUP);
 
-  pinMode(rotCLK2,INPUT);
-  pinMode(rotDT2,INPUT);
-  pinMode(rotSW2,INPUT_PULLUP);
+  pinMode(rotCLK_B,INPUT);
+  pinMode(rotDT_B,INPUT);
+  pinMode(rotSW_B,INPUT_PULLUP);
 
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -105,14 +104,14 @@ void setup() {
 }
 
 void loop() {
-  currentStateCLK = digitalRead(rotCLK1);
+  currentStateCLK = digitalRead(rotCLK_A);
   if (currentStateCLK != lastStateCLK) {
-    if (digitalRead(rotDT1) != currentStateCLK && counter < MAX_VALUE_1) {
+    if (digitalRead(rotDT_A) != currentStateCLK && counter < MAX_VALUE_A) {
       //MEDURS ROTATION
-      counter+=COUNTER_STEPSIZE;
-    } else if (counter > 0 && digitalRead(rotDT1) == currentStateCLK) {
+      counterA+=COUNTER_STEPSIZE;
+    } else if (counter > 0 && digitalRead(rotDT_A) == currentStateCLK) {
       //MOTURS ROTATION
-      counter-=COUNTER_STEPSIZE;
+      counterA-=COUNTER_STEPSIZE;
     }
     Serial.println(counter);
     refreshDisplay(0, counter);
