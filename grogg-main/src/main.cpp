@@ -12,12 +12,12 @@
 #define ROT_DT_A 3
 #define ROT_SW_A 4
 
-#define ROT_CLK_B 5
-#define ROT_DT_B 6
-#define ROT_SW_B 7
-
 #define PUMP_IN_A 10
-#define PUMP_IN_B -1
+
+#define SUB_A 8
+#define SUB_B 9
+
+#define MASTER 7
 
 //OANVÄNT
 #define SCRN_SDA_A A5
@@ -37,24 +37,21 @@
 int counter_A = 0;
 int CLKlastState_A = HIGH;
 int SWlastState_A = HIGH;
-
+int masterLastState = LOW;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 
-int rotPumpMap(int rotCLK) { //kartlägger skruvgrej X till pump X
+/*int rotPumpMap(int rotCLK) { //kartlägger skruvgrej X till pump X
 
   switch (rotCLK) {
     case ROT_CLK_A:
       return PUMP_IN_A;
 
-    case ROT_CLK_B:
-      return PUMP_IN_B;
-
     default: 
       return -1;
   }
-} 
+} */
 
 void displayAlignAndPrint(String text, int xAlign, int yAlign) {
   int16_t x=0,y=0,x1,y1;
@@ -104,6 +101,29 @@ void firePump(int pumpIn, int duration) {
   }
 }
 
+void signalOut(int pin) { //för master
+  digitalWrite(pin,HIGH);
+  delay(100);
+  digitalWrite(pin,LOW);
+}
+
+void signalReceived() {
+  firePump(PUMP_IN_A,counter_A);
+}
+
+void buttonPressed() { //för master
+  signalOut(SUB_A);
+  signalOut(SUB_B);
+  signalReceived();
+}
+
+void listener() { //för sub
+  int masterCurrentState = digitalRead(MASTER);
+  if (masterCurrentState == HIGH && masterLastState == LOW) {
+    signalReceived();
+  }
+}
+
 void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
   int* counter, int* CLKlastState, int* SWlastState) {
     
@@ -132,9 +152,7 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
   if (SWcurrentState == LOW && *SWlastState == HIGH) {
     delay(20); // Debounce delay
     if (digitalRead(rotSW) == LOW) {
-      Serial.println("Button pressed");
-      int pump = rotPumpMap(rotCLK);
-      firePump(pump,*counter);
+      buttonPressed();
     }
   }
   *SWlastState = SWcurrentState;
@@ -149,11 +167,6 @@ void setup() {
   pinMode(ROT_DT_A, INPUT);
   pinMode(ROT_SW_A, INPUT_PULLUP);
 
-  //vrid nr2
-  pinMode(ROT_CLK_B,INPUT);
-  pinMode(ROT_DT_B,INPUT);
-  pinMode(ROT_SW_B,INPUT_PULLUP);
-
   //pump nr1
   digitalWrite(PUMP_IN_A,LOW);
   pinMode(PUMP_IN_A, OUTPUT);
@@ -166,6 +179,15 @@ void setup() {
   displayAlignAndPrint(DISPLAY_UNIT,RIGHT,DOWN);
   displayAlignAndPrint(String(counter_A),LEFT,DOWN);
   display.display();
+
+  //skicka ut till sub-arduinos, dessa är tomma på själva sub-arduinos
+  digitalWrite(SUB_A,LOW);
+  pinMode(SUB_A,OUTPUT);
+  digitalWrite(SUB_B,LOW);
+  pinMode(SUB_A,OUTPUT);
+
+  //lyssnar på master-arduino, den här är tom på master-arduino
+  pinMode(MASTER,INPUT);
 
 }
 
