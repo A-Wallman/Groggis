@@ -103,10 +103,11 @@ int pumpDurationClToMs(int value) {
 
 
 void firePump(int pumpIn, int duration) {
-  Serial.print(String(pumpIn)+" "+String(duration));
-  digitalWrite(pumpIn,HIGH);
-  delay(duration);
-  digitalWrite(pumpIn,LOW);
+  if (duration!=0) {
+    digitalWrite(pumpIn,HIGH);
+    delay(duration);
+    digitalWrite(pumpIn,LOW);
+  }
 }
 
 void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
