@@ -7,17 +7,22 @@
 #define UP 1
 #define LEFT 2
 #define DOWN 3
+#define CENTER 5
 
 #define ROT_CLK_A 2
 #define ROT_DT_A 3
 #define ROT_SW_A 4
 
-#define PUMP_IN_A 10
+#define PUMP_A 10
 
-#define SUB_A 8
-#define SUB_B 9
+#define SLAVE_IN 10
+#define SLAVE_OUT 9
 
-#define MASTER 7
+#define MASTER_IN_A 8
+#define MASTER_OUT_A 7
+#define MASTER_IN_B 6
+#define MASTER_OUT_B 5
+
 
 //OANVÄNT
 #define SCRN_SDA_A A5
@@ -39,6 +44,10 @@ int CLKlastState_A = HIGH;
 int SWlastState_A = HIGH;
 int masterLastState = LOW;
 
+boolean isMaster;
+
+boolean initialized = false;
+
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 
@@ -53,27 +62,36 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
   }
 } */
 
-void displayAlignAndPrint(String text, int xAlign, int yAlign) {
+void displayAlignAndPrint(String text, int xAlign, int yAlign, int textSize) {
   int16_t x=0,y=0,x1,y1;
   uint16_t w,h;
   int cursX,cursY;
+
+
+  display.setTextSize(textSize);
 
   display.getTextBounds(text.c_str(), x, y, &x1, &y1, &w, &h);
 
   switch (xAlign) {
     case LEFT:
-      cursX =0;
+      cursX = 0;
+      break;
+    case CENTER:
+      cursX = (SCREEN_WIDTH - w) / 2;
       break;
     case RIGHT:
-      cursX=SCREEN_WIDTH-w;
+      cursX = SCREEN_WIDTH - w;
       break;
   }
   switch (yAlign) {
     case UP:
-      cursY=0;
+      cursY = 0;
+      break;
+    case CENTER:
+      cursY = (SCREEN_HEIGHT - h) / 2;
       break;
     case DOWN:
-      cursY=SCREEN_HEIGHT-h;
+      cursY = SCREEN_HEIGHT - h;
       break;
   }
 
@@ -83,8 +101,8 @@ void displayAlignAndPrint(String text, int xAlign, int yAlign) {
 
 void refreshDisplay(int screen, int number) {
   display.clearDisplay();
-  displayAlignAndPrint(DISPLAY_UNIT, RIGHT, DOWN);
-  displayAlignAndPrint(String(number),LEFT,DOWN);
+  displayAlignAndPrint(DISPLAY_UNIT, RIGHT, DOWN, DISPLAY_TEXTSIZE);
+  displayAlignAndPrint(String(number),LEFT,DOWN, DISPLAY_TEXTSIZE);
   display.display();
 }
 
@@ -101,27 +119,17 @@ void firePump(int pumpIn, int duration) {
   }
 }
 
-void signalOut(int pin) { //för master
-  digitalWrite(pin,HIGH);
-  delay(100);
-  digitalWrite(pin,LOW);
-}
 
 void signalReceived() {
-  firePump(PUMP_IN_A,counter_A);
+  firePump(PUMP_A,counter_A);
 }
 
 void buttonPressed() { //för master
-  signalOut(SUB_A);
-  signalOut(SUB_B);
-  signalReceived();
+  
 }
 
 void listener() { //för sub
-  int masterCurrentState = digitalRead(MASTER);
-  if (masterCurrentState == HIGH && masterLastState == LOW) {
-    signalReceived();
-  }
+  
 }
 
 void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
@@ -158,6 +166,65 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
   *SWlastState = SWcurrentState;
 }
 
+void sendPulse(int pin) {
+  digitalWrite(pin, HIGH);
+  delay(5);
+  digitalWrite(pin,LOW);
+}
+
+void masterHandshake() {
+
+  displayAlignAndPrint("Väntar på A...",CENTER,CENTER,DISPLAY_TEXTSIZE);
+
+  while(digitalRead(MASTER_IN_A==LOW)) {
+    sendPulse(MASTER_OUT_A);
+    delay(100);
+  }
+  display.clearDisplay();
+
+  displayAlignAndPrint("Väntar på B...",CENTER,CENTER,DISPLAY_TEXTSIZE);
+  while(digitalRead(MASTER_IN_B==LOW)) {
+    sendPulse(MASTER_OUT_B);
+    delay(100);
+  }
+  display.clearDisplay();
+
+  sendPulse(MASTER_OUT_A);
+  sendPulse(MASTER_OUT_B);
+}
+
+void masterInit() {
+  isMaster = true;
+
+  pinMode(MASTER_IN_A,INPUT);
+  pinMode(MASTER_OUT_A,OUTPUT);
+
+  pinMode(MASTER_IN_B,INPUT);
+  pinMode(MASTER_OUT_B,OUTPUT);
+
+  masterHandshake();
+
+  initialized = true;
+}
+
+void slaveInit() {
+  isMaster = false;
+
+  pinMode(SLAVE_IN,INPUT);
+  pinMode(SLAVE_OUT,OUTPUT);
+
+  while(digitalRead(SLAVE_IN)==LOW) {
+  }
+  delay(5);
+
+  digitalWrite(SLAVE_OUT,HIGH);
+  while(digitalRead(SLAVE_IN)==LOW) {
+  }
+
+  digitalWrite(SLAVE_OUT,LOW);
+  initialized = true;
+
+}
 
 void setup() {
   Serial.begin(9600);
@@ -168,31 +235,35 @@ void setup() {
   pinMode(ROT_SW_A, INPUT_PULLUP);
 
   //pump nr1
-  digitalWrite(PUMP_IN_A,LOW);
-  pinMode(PUMP_IN_A, OUTPUT);
+  digitalWrite(PUMP_A,LOW);
+  pinMode(PUMP_A, OUTPUT);
 
   //skärm nr 1
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
-  display.setTextSize(DISPLAY_TEXTSIZE);
-  displayAlignAndPrint(DISPLAY_UNIT,RIGHT,DOWN);
-  displayAlignAndPrint(String(counter_A),LEFT,DOWN);
-  display.display();
 
-  //skicka ut till sub-arduinos, dessa är tomma på själva sub-arduinos
-  digitalWrite(SUB_A,LOW);
-  pinMode(SUB_A,OUTPUT);
-  digitalWrite(SUB_B,LOW);
-  pinMode(SUB_A,OUTPUT);
+  pinMode(SLAVE_IN,INPUT);
+  if (digitalRead(SLAVE_IN)==HIGH) { //på master arduinon är SLAVE_IN kopplad till konstant etta, därmed är detta en master-arduino
+    masterInit();
+  } else { //arduinon är slave
+    slaveInit();
+  }
 
-  //lyssnar på master-arduino, den här är tom på master-arduino
-  pinMode(MASTER,INPUT);
+  
+  displayAlignAndPrint(DISPLAY_UNIT,RIGHT,DOWN,DISPLAY_TEXTSIZE);
+  displayAlignAndPrint(String(counter_A),LEFT,DOWN,DISPLAY_TEXTSIZE);
 
 }
 
 void loop() {
   rotaryHandler(ROT_CLK_A, ROT_DT_A, ROT_SW_A, MAX_VALUE_A,
     &counter_A, &CLKlastState_A, &SWlastState_A);
+
+  if (isMaster) { //master loop
+
+  } else { //slave loop
+    
+  }
 
 }
