@@ -47,6 +47,8 @@ int masterLastState = LOW;
 boolean isMaster;
 
 boolean initialized = false;
+boolean aInitalized = false;
+boolean bInitalized = false;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -210,19 +212,11 @@ void masterInit() {
 void slaveInit() {
   isMaster = false;
 
+
+
   pinMode(SLAVE_IN,INPUT);
   pinMode(SLAVE_OUT,OUTPUT);
 
-  while(digitalRead(SLAVE_IN)==LOW) {
-  }
-  delay(5);
-
-  digitalWrite(SLAVE_OUT,HIGH);
-  while(digitalRead(SLAVE_IN)==LOW) {
-  }
-
-  digitalWrite(SLAVE_OUT,LOW);
-  initialized = true;
 
 }
 
@@ -242,6 +236,8 @@ void setup() {
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
+  displayAlignAndPrint("Laddar...",CENTER,UP,DISPLAY_TEXTSIZE);
+  display.display();
 
   pinMode(SLAVE_IN,INPUT);
   if (digitalRead(SLAVE_IN)==HIGH) { //på master arduinon är SLAVE_IN kopplad till konstant etta, därmed är detta en master-arduino
@@ -251,19 +247,70 @@ void setup() {
   }
 
   
-  displayAlignAndPrint(DISPLAY_UNIT,RIGHT,DOWN,DISPLAY_TEXTSIZE);
-  displayAlignAndPrint(String(counter_A),LEFT,DOWN,DISPLAY_TEXTSIZE);
 
 }
 
 void loop() {
-  rotaryHandler(ROT_CLK_A, ROT_DT_A, ROT_SW_A, MAX_VALUE_A,
-    &counter_A, &CLKlastState_A, &SWlastState_A);
 
   if (isMaster) { //master loop
 
-  } else { //slave loop
+    if (!initialized) {
+
+      if (!aInitalized) {
+
+        if (digitalRead(MASTER_IN_A==LOW)) {
+          sendPulse(MASTER_OUT_A);
+          delay(100);
+        }
+        if (digitalRead(MASTER_IN_A==HIGH)) {
+          aInitalized=true;
+          displayAlignAndPrint("A är redo",CENTER,CENTER,DISPLAY_TEXTSIZE);
+        }
+      }
+
+      if (!bInitalized) {
+
+        if (digitalRead(MASTER_IN_B==LOW)) {
+          sendPulse(MASTER_OUT_B);
+          delay(100);
+        }
+        if (digitalRead(MASTER_IN_B==HIGH)) {
+          bInitalized=true;
+          displayAlignAndPrint("B är redo",CENTER,DOWN,DISPLAY_TEXTSIZE);
+        }
+      }
+
+    }
+
+    if (initialized) {
+
+    }
+  }
+
+  if (!isMaster) { //slave loop
+
+    if (!initialized && digitalRead(SLAVE_IN) == HIGH) {
+    initialized = true;
+    }
+
+    if (initialized) {
+      //add listener functionality
+    }
+
+  }
+
+  if (initialized) { //gemensamt oavsett
+      
+  display.clearDisplay();
+
+  rotaryHandler(ROT_CLK_A, ROT_DT_A, ROT_SW_A, MAX_VALUE_A,
+  &counter_A, &CLKlastState_A, &SWlastState_A);
+    
+  displayAlignAndPrint(String(counter_A),LEFT,DOWN,DISPLAY_TEXTSIZE);
+  displayAlignAndPrint("ms",RIGHT,DOWN,DISPLAY_TEXTSIZE);
     
   }
+
+  
 
 }
