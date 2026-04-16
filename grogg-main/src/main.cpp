@@ -44,7 +44,7 @@ int CLKlastState_A = HIGH;
 int SWlastState_A = HIGH;
 int masterLastState = LOW;
 int slaveALastState = LOW;
-int slaveALastState = LOW;
+int slaveBLastState = LOW;
 
 boolean isMaster;
 
@@ -223,6 +223,9 @@ void slaveInit() {
 void setup() {
   Serial.begin(9600);
 
+  // Initialize I2C bus
+  Wire.begin();
+
   // vrid nr1
   pinMode(ROT_CLK_A, INPUT);
   pinMode(ROT_DT_A, INPUT);
@@ -233,10 +236,18 @@ void setup() {
   pinMode(PUMP_A, OUTPUT);
 
   //skärm nr 1
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 at 0x3C failed, trying 0x3D"));
+    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
+      Serial.println(F("SSD1306 allocation failed"));
+      for(;;); // Don't proceed, loop forever
+    }
+  }
+  Serial.println(F("SSD1306 initialized successfully"));
   display.clearDisplay();
-  display.setTextColor(SSD1306_WHITE);
-  displayAlignAndPrint("Laddar...",CENTER,UP,DISPLAY_TEXTSIZE);
+  display.setTextSize(4);
+  display.print("hej");
+  display.display();
   display.display();
 
   pinMode(SLAVE_IN,INPUT);
@@ -246,12 +257,10 @@ void setup() {
     slaveInit();
   }
 
-  
-
 }
 
 void loop() {
-
+/*
   if (isMaster) { //master loop
 
     if (!initialized) {
@@ -305,17 +314,17 @@ void loop() {
   }
 
   if (initialized) { //gemensamt för alla arduino
+    
+    display.clearDisplay();
+
+    rotaryHandler(ROT_CLK_A, ROT_DT_A, ROT_SW_A, MAX_VALUE_A,
+    &counter_A, &CLKlastState_A, &SWlastState_A);
       
-  display.clearDisplay();
-
-  rotaryHandler(ROT_CLK_A, ROT_DT_A, ROT_SW_A, MAX_VALUE_A,
-  &counter_A, &CLKlastState_A, &SWlastState_A);
-    
-  displayAlignAndPrint(String(counter_A),LEFT,DOWN,DISPLAY_TEXTSIZE);
-  displayAlignAndPrint("ms",RIGHT,DOWN,DISPLAY_TEXTSIZE);
-    
+    displayAlignAndPrint(String(counter_A),LEFT,DOWN,DISPLAY_TEXTSIZE);
+    displayAlignAndPrint("ms",RIGHT,DOWN,DISPLAY_TEXTSIZE);
+      
   }
-
+*/
   
 
 }
