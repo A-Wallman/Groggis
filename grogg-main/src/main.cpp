@@ -13,7 +13,7 @@
 #define ROT_DT_A 3
 #define ROT_SW_A 4
 
-#define PUMP_A 10
+#define PUMP_A 11
 
 #define SLAVE_IN 10
 #define SLAVE_OUT 9
@@ -43,6 +43,8 @@ int counter_A = 0;
 int CLKlastState_A = HIGH;
 int SWlastState_A = HIGH;
 int masterLastState = LOW;
+int slaveALastState = LOW;
+int slaveALastState = LOW;
 
 boolean isMaster;
 
@@ -127,7 +129,7 @@ void signalReceived() {
 }
 
 void buttonPressed() { //för master
-  
+  firePump(PUMP_A,counter_A);
 }
 
 void listener() { //för sub
@@ -174,7 +176,7 @@ void sendPulse(int pin) {
   digitalWrite(pin,LOW);
 }
 
-void masterHandshake() {
+/*void masterHandshake() {
 
   displayAlignAndPrint("Väntar på A...",CENTER,CENTER,DISPLAY_TEXTSIZE);
 
@@ -193,7 +195,7 @@ void masterHandshake() {
 
   sendPulse(MASTER_OUT_A);
   sendPulse(MASTER_OUT_B);
-}
+}*/
 
 void masterInit() {
   isMaster = true;
@@ -204,9 +206,7 @@ void masterInit() {
   pinMode(MASTER_IN_B,INPUT);
   pinMode(MASTER_OUT_B,OUTPUT);
 
-  masterHandshake();
 
-  initialized = true;
 }
 
 void slaveInit() {
@@ -280,9 +280,13 @@ void loop() {
         }
       }
 
+      if (aInitalized && bInitalized) {
+        initialized = true;
+      }
+
     }
 
-    if (initialized) {
+    if (initialized) { //master only, intitalized
 
     }
   }
@@ -290,7 +294,8 @@ void loop() {
   if (!isMaster) { //slave loop
 
     if (!initialized && digitalRead(SLAVE_IN) == HIGH) {
-    initialized = true;
+      initialized = true;
+      digitalWrite(SLAVE_OUT,HIGH);
     }
 
     if (initialized) {
@@ -299,7 +304,7 @@ void loop() {
 
   }
 
-  if (initialized) { //gemensamt oavsett
+  if (initialized) { //gemensamt för alla arduino
       
   display.clearDisplay();
 
