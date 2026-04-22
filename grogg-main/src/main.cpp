@@ -22,6 +22,7 @@
 #define MASTER_OUT_A 7
 #define MASTER_IN_B 6
 #define MASTER_OUT_B 5
+#define MASTER_BUTTON 13
 
 
 //OANVÄNT
@@ -45,6 +46,13 @@ int SWlastState_A = HIGH;
 int masterLastState = LOW;
 int slaveALastState = LOW;
 int slaveBLastState = LOW;
+int masterButtonCurrentState = LOW;
+int masterButtonLastState = LOW;
+
+const int debounceDelay = 50;
+unsigned long lastDebounceTime = 0;
+
+
 
 boolean isMaster;
 
@@ -114,12 +122,17 @@ int pumpDurationClToMs(int value) {
   return value; //TBA: kalibrera med pumparna och se hur pumptid förhåller sig till volym i cl
 }
 
+void sendPulse(int pin) {
+  digitalWrite(pin, HIGH);
+  delay(5);
+  digitalWrite(pin,LOW);
+}
 
-void firePump(int pumpIn, int duration) {
+void firePump(int pump, int duration) {
   if (duration!=0) {
-    digitalWrite(pumpIn,HIGH);
+    digitalWrite(pump,HIGH);
     delay(duration);
-    digitalWrite(pumpIn,LOW);
+    digitalWrite(pump,LOW);
   }
 }
 
@@ -129,6 +142,9 @@ void signalReceived() {
 }
 
 void buttonPressed() { //för master
+  Serial.println("button pressed");
+  sendPulse(MASTER_OUT_A);
+  sendPulse(MASTER_OUT_B);
   firePump(PUMP_A,counter_A);
 }
 
@@ -158,7 +174,7 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
   }
   
   *CLKlastState = CLKcurrentState;
-  
+  /*
   // Knapptryck
   int SWcurrentState = digitalRead(rotSW);
   if (SWcurrentState == LOW && *SWlastState == HIGH) {
@@ -167,14 +183,10 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
       buttonPressed();
     }
   }
-  *SWlastState = SWcurrentState;
+  *SWlastState = SWcurrentState;*/
 }
 
-void sendPulse(int pin) {
-  digitalWrite(pin, HIGH);
-  delay(5);
-  digitalWrite(pin,LOW);
-}
+
 
 /*void masterHandshake() {
 
@@ -200,25 +212,30 @@ void sendPulse(int pin) {
 void masterInit() {
   isMaster = true;
 
+  Serial.println("masterInit");
+
   pinMode(MASTER_IN_A,INPUT);
   pinMode(MASTER_OUT_A,OUTPUT);
 
   pinMode(MASTER_IN_B,INPUT);
   pinMode(MASTER_OUT_B,OUTPUT);
 
+  pinMode(MASTER_BUTTON,INPUT);
 
 }
 
 void slaveInit() {
   isMaster = false;
 
-
+  Serial.println("slaveInit");
 
   pinMode(SLAVE_IN,INPUT);
   pinMode(SLAVE_OUT,OUTPUT);
 
 
 }
+
+
 
 void setup() {
   Serial.begin(9600);
@@ -236,13 +253,14 @@ void setup() {
   pinMode(PUMP_A, OUTPUT);
 
   //skärm nr 1
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+  /*if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 at 0x3C failed, trying 0x3D"));
     if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
       Serial.println(F("SSD1306 allocation failed"));
       for(;;); // Don't proceed, loop forever
     }
-  }
+  }*/
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   Serial.println(F("SSD1306 initialized successfully"));
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
@@ -293,6 +311,9 @@ void loop() {
 
       if (aInitialized && bInitialized) {
         initialized = true;
+        display.clearDisplay();
+        displayAlignAndPrint("Allt Redo!", CENTER,CENTER,DISPLAY_TEXTSIZE+1);
+        display.display();
         delay(100);
         refreshDisplay(0);
       }
@@ -301,18 +322,42 @@ void loop() {
 
     if (initialized) { //master only, intitalized
 
+      if (digitalRead(MASTER_BUTTON)==HIGH && masterButtonLastState==LOW) {
+        buttonPressed();
+        masterButtonLastState = HIGH;
+        delay(50);
+      }
+      if (digitalRead(MASTER_BUTTON)==LOW) {
+        masterButtonLastState = LOW;
+      }
     }
   }
 
   if (!isMaster) { //slave loop
+    
+    if (!initialized) {
+      displayAlignAndPrint("Initialiserar...",CENTER,UP,DISPLAY_TEXTSIZE-1);
+      display.display();
+    }
 
     if (!initialized && digitalRead(SLAVE_IN) == HIGH) {
       initialized = true;
       digitalWrite(SLAVE_OUT,HIGH);
+      masterLastState = HIGH;
+      refreshDisplay(0);
+      delay(50);
     }
 
     if (initialized) {
       //add listener functionality
+      if (digitalRead(SLAVE_IN)==HIGH && masterLastState == LOW) {
+        signalReceived();
+        masterLastState = HIGH;
+      }
+      if (digitalRead(SLAVE_IN) == LOW) {
+        masterLastState = LOW;
+      }
+
     }
 
   }
@@ -326,7 +371,5 @@ void loop() {
     
       
   }
-
-  
 
 }
