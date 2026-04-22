@@ -49,8 +49,8 @@ int slaveBLastState = LOW;
 boolean isMaster;
 
 boolean initialized = false;
-boolean aInitalized = false;
-boolean bInitalized = false;
+boolean aInitialized = false;
+boolean bInitialized = false;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -103,7 +103,7 @@ void displayAlignAndPrint(String text, int xAlign, int yAlign, int textSize) {
   display.println(text);
 }
 
-void refreshDisplay(int screen, int number) {
+void refreshDisplay(int number) {
   display.clearDisplay();
   displayAlignAndPrint(DISPLAY_UNIT, RIGHT, DOWN, DISPLAY_TEXTSIZE);
   displayAlignAndPrint(String(number),LEFT,DOWN, DISPLAY_TEXTSIZE);
@@ -153,7 +153,7 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
     delay(5); 
 
     Serial.println(*counter);
-    refreshDisplay(0, *counter);
+    refreshDisplay(*counter);
     
   }
   
@@ -245,11 +245,8 @@ void setup() {
   }
   Serial.println(F("SSD1306 initialized successfully"));
   display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
   display.setTextSize(4);
-  display.print("hej");
-  display.display();
-  display.display();
-
   pinMode(SLAVE_IN,INPUT);
   if (digitalRead(SLAVE_IN)==HIGH) { //på master arduinon är SLAVE_IN kopplad till konstant etta, därmed är detta en master-arduino
     masterInit();
@@ -260,37 +257,44 @@ void setup() {
 }
 
 void loop() {
-/*
+
   if (isMaster) { //master loop
 
     if (!initialized) {
+      displayAlignAndPrint("Initialiserar...",CENTER,UP,DISPLAY_TEXTSIZE-1);
+      display.display();
+      if (!aInitialized) {
 
-      if (!aInitalized) {
-
-        if (digitalRead(MASTER_IN_A==LOW)) {
+        if (digitalRead(MASTER_IN_A)==LOW) {
           sendPulse(MASTER_OUT_A);
           delay(100);
+          Serial.println("pingar A..");
         }
-        if (digitalRead(MASTER_IN_A==HIGH)) {
-          aInitalized=true;
-          displayAlignAndPrint("A är redo",CENTER,CENTER,DISPLAY_TEXTSIZE);
+        if (digitalRead(MASTER_IN_A)==HIGH) {
+          aInitialized=true;
+          displayAlignAndPrint("A redo",CENTER,CENTER,DISPLAY_TEXTSIZE-1);
+          display.display();
         }
       }
 
-      if (!bInitalized) {
+      if (!bInitialized) {
 
-        if (digitalRead(MASTER_IN_B==LOW)) {
+        if (digitalRead(MASTER_IN_B)==LOW) {
           sendPulse(MASTER_OUT_B);
           delay(100);
+          Serial.println("pingar B..");
         }
-        if (digitalRead(MASTER_IN_B==HIGH)) {
-          bInitalized=true;
-          displayAlignAndPrint("B är redo",CENTER,DOWN,DISPLAY_TEXTSIZE);
+        if (digitalRead(MASTER_IN_B)==HIGH) {
+          bInitialized=true;
+          displayAlignAndPrint("B redo",CENTER,DOWN,DISPLAY_TEXTSIZE-1);
+          display.display();
         }
       }
 
-      if (aInitalized && bInitalized) {
+      if (aInitialized && bInitialized) {
         initialized = true;
+        delay(100);
+        refreshDisplay(0);
       }
 
     }
@@ -315,16 +319,14 @@ void loop() {
 
   if (initialized) { //gemensamt för alla arduino
     
-    display.clearDisplay();
 
     rotaryHandler(ROT_CLK_A, ROT_DT_A, ROT_SW_A, MAX_VALUE_A,
     &counter_A, &CLKlastState_A, &SWlastState_A);
       
-    displayAlignAndPrint(String(counter_A),LEFT,DOWN,DISPLAY_TEXTSIZE);
-    displayAlignAndPrint("ms",RIGHT,DOWN,DISPLAY_TEXTSIZE);
+    
       
   }
-*/
+
   
 
 }
