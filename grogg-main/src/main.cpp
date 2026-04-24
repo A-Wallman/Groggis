@@ -16,13 +16,17 @@
 #define PUMP_A 11
 
 #define SLAVE_IN 10
-#define SLAVE_OUT 9
+#define SLAVE_READY_OUT 9
 
-#define MASTER_IN_A 8
+#define SLAVE_READY_IN_A 8
 #define MASTER_OUT_A 7
-#define MASTER_IN_B 6
+#define SLAVE_READY_IN_B 6
 #define MASTER_OUT_B 5
 #define MASTER_BUTTON 13
+
+#define MASTER_IN_A 14
+#define MASTER_IN_B 15
+#define SLAVE_OUT 1
 
 
 //OANVÄNT
@@ -40,7 +44,7 @@
 #define COUNTER_STEPSIZE 50
 
 
-int counter_A = 0;
+unsigned long counter = 0;
 int CLKlastState_A = HIGH;
 int SWlastState_A = HIGH;
 int masterLastState = LOW;
@@ -48,17 +52,23 @@ int slaveALastState = LOW;
 int slaveBLastState = LOW;
 int masterButtonCurrentState = LOW;
 int masterButtonLastState = LOW;
+unsigned long pumpStartTime;
+
+bool isPumping = false;
+bool slaveAPumping = false;
+bool slaveBPumping = false;
+bool allNotPumping = true;
 
 const int debounceDelay = 50;
 unsigned long lastDebounceTime = 0;
 
 
 
-boolean isMaster;
+bool isMaster;
 
-boolean initialized = false;
-boolean aInitialized = false;
-boolean bInitialized = false;
+bool initialized = false;
+bool aInitialized = false;
+bool bInitialized = false;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -128,24 +138,61 @@ void sendPulse(int pin) {
   digitalWrite(pin,LOW);
 }
 
-void firePump(int pump, int duration) {
-  if (duration!=0) {
-    digitalWrite(pump,HIGH);
-    delay(duration);
-    digitalWrite(pump,LOW);
+void firePump() {
+  if (counter!=0) {
+    pumpStartTime = millis();
+  }
+}
+
+void stopPump() {
+  pumpStartTime = 0;
+}
+
+void pumpHandler() {
+
+  if (millis() > pumpStartTime + counter) {
+    isPumping = false;
+    digitalWrite(PUMP_A, LOW);
+  } else {
+    isPumping = true;
+    digitalWrite(PUMP_A, HIGH);
   }
 }
 
 
 void signalReceived() {
-  firePump(PUMP_A,counter_A);
+  if (isPumping) {
+    stopPump();
+  } else {
+    firePump();
+  }
 }
 
 void buttonPressed() { //för master
   Serial.println("button pressed");
+
+  if(allNotPumping) {
+    firePump();
+    sendPulse(MASTER_OUT_A);
+    sendPulse(MASTER_OUT_B);
+  } 
+  if (slaveAPumping) {
+    sendPulse(MASTER_OUT_A);
+  }
+  if (slaveBPumping) {
+    sendPulse(MASTER_OUT_A);
+  }
+  if (isPumping) {
+    stopPump();
+  }
+
   sendPulse(MASTER_OUT_A);
   sendPulse(MASTER_OUT_B);
-  firePump(PUMP_A,counter_A);
+  if (!isPumping) {
+    firePump();
+  } else {
+    stopPump();
+  }
 }
 
 void listener() { //för sub
@@ -153,7 +200,7 @@ void listener() { //för sub
 }
 
 void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
-  int* counter, int* CLKlastState, int* SWlastState) {
+  unsigned long* counter, int* CLKlastState, int* SWlastState) {
     
   int CLKcurrentState = digitalRead(rotCLK);
   if (CLKcurrentState != *CLKlastState) {
@@ -192,14 +239,14 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
 
   displayAlignAndPrint("Väntar på A...",CENTER,CENTER,DISPLAY_TEXTSIZE);
 
-  while(digitalRead(MASTER_IN_A==LOW)) {
+  while(digitalRead(SLAVE_READY_IN_A==LOW)) {
     sendPulse(MASTER_OUT_A);
     delay(100);
   }
   display.clearDisplay();
 
   displayAlignAndPrint("Väntar på B...",CENTER,CENTER,DISPLAY_TEXTSIZE);
-  while(digitalRead(MASTER_IN_B==LOW)) {
+  while(digitalRead(SLAVE_READY_IN_B==LOW)) {
     sendPulse(MASTER_OUT_B);
     delay(100);
   }
@@ -214,14 +261,17 @@ void masterInit() {
 
   Serial.println("masterInit");
 
-  pinMode(MASTER_IN_A,INPUT);
+  pinMode(SLAVE_READY_IN_A,INPUT);
   pinMode(MASTER_OUT_A,OUTPUT);
 
-  pinMode(MASTER_IN_B,INPUT);
+  pinMode(SLAVE_READY_IN_B,INPUT);
   pinMode(MASTER_OUT_B,OUTPUT);
 
   pinMode(MASTER_BUTTON,INPUT);
 
+  
+  pinMode(MASTER_IN_A, INPUT);
+  pinMode(MASTER_IN_B, INPUT);
 }
 
 void slaveInit() {
@@ -230,9 +280,10 @@ void slaveInit() {
   Serial.println("slaveInit");
 
   pinMode(SLAVE_IN,INPUT);
-  pinMode(SLAVE_OUT,OUTPUT);
+  pinMode(SLAVE_READY_OUT,OUTPUT);
 
 
+  pinMode(SLAVE_OUT, OUTPUT);
 }
 
 
@@ -283,12 +334,12 @@ void loop() {
       display.display();
       if (!aInitialized) {
 
-        if (digitalRead(MASTER_IN_A)==LOW) {
+        if (digitalRead(SLAVE_READY_IN_A)==LOW) {
           sendPulse(MASTER_OUT_A);
           delay(100);
           Serial.println("pingar A..");
         }
-        if (digitalRead(MASTER_IN_A)==HIGH) {
+        if (digitalRead(SLAVE_READY_IN_A)==HIGH) {
           aInitialized=true;
           displayAlignAndPrint("A redo",CENTER,CENTER,DISPLAY_TEXTSIZE-1);
           display.display();
@@ -297,12 +348,12 @@ void loop() {
 
       if (!bInitialized) {
 
-        if (digitalRead(MASTER_IN_B)==LOW) {
+        if (digitalRead(SLAVE_READY_IN_B)==LOW) {
           sendPulse(MASTER_OUT_B);
           delay(100);
           Serial.println("pingar B..");
         }
-        if (digitalRead(MASTER_IN_B)==HIGH) {
+        if (digitalRead(SLAVE_READY_IN_B)==HIGH) {
           bInitialized=true;
           displayAlignAndPrint("B redo",CENTER,DOWN,DISPLAY_TEXTSIZE-1);
           display.display();
@@ -330,6 +381,18 @@ void loop() {
       if (digitalRead(MASTER_BUTTON)==LOW) {
         masterButtonLastState = LOW;
       }
+
+      if (digitalRead(MASTER_IN_A == LOW)) {
+        slaveAPumping = false;
+      } else {
+        slaveAPumping = true;
+      }
+      if (digitalRead(MASTER_IN_B == LOW)) {
+        slaveBPumping = false;
+      } else {
+        slaveBPumping = true;
+      }
+      allNotPumping = (!slaveAPumping)&&(!slaveBPumping)&&(!isPumping);
     }
   }
 
@@ -342,13 +405,13 @@ void loop() {
 
     if (!initialized && digitalRead(SLAVE_IN) == HIGH) {
       initialized = true;
-      digitalWrite(SLAVE_OUT,HIGH);
+      digitalWrite(SLAVE_READY_OUT,HIGH);
       masterLastState = HIGH;
       refreshDisplay(0);
       delay(50);
     }
 
-    if (initialized) {
+    if (initialized) { //slaveonly loop
       //add listener functionality
       if (digitalRead(SLAVE_IN)==HIGH && masterLastState == LOW) {
         signalReceived();
@@ -356,6 +419,12 @@ void loop() {
       }
       if (digitalRead(SLAVE_IN) == LOW) {
         masterLastState = LOW;
+      }
+
+      if (isPumping) {
+        digitalWrite(SLAVE_OUT,HIGH);
+      } else {
+        digitalWrite(SLAVE_OUT,LOW);
       }
 
     }
@@ -366,8 +435,8 @@ void loop() {
     
 
     rotaryHandler(ROT_CLK_A, ROT_DT_A, ROT_SW_A, MAX_VALUE_A,
-    &counter_A, &CLKlastState_A, &SWlastState_A);
-      
+    &counter, &CLKlastState_A, &SWlastState_A);
+    pumpHandler();
     
       
   }
