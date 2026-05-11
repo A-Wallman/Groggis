@@ -15,13 +15,13 @@
 
 #define PUMP_A 11
 
-#define SLAVE_IN 10
+#define SLAVE_TRIGGER_IN 10
 #define SLAVE_READY_OUT 9
 
-#define SLAVE_READY_IN_A 8
-#define MASTER_OUT_A 7
-#define SLAVE_READY_IN_B 6
-#define MASTER_OUT_B 5
+#define MASTER_READY_IN_A 8
+#define MASTER_TRIGGER_OUT_A 7
+#define MASTER_READY_IN_B 6
+#define MASTER_TRIGGER_OUT_B 5
 #define MASTER_BUTTON 13
 
 #define MASTER_IN_A 14
@@ -37,30 +37,31 @@
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 
-#define MAX_VALUE_A 10000
+#define MAX_VALUE_A 20
 
-#define DISPLAY_TEXTSIZE 2
-#define DISPLAY_UNIT "ms"
-#define COUNTER_STEPSIZE 50
+#define DISPLAY_TEXTSIZE 3
+#define DISPLAY_UNIT "cl"
+#define COUNTER_STEPSIZE 0.5
 
 
-unsigned long counter = 0;
+float counter = 0;
+unsigned long targetPumpTime = 0;
 int CLKlastState_A = HIGH;
 int SWlastState_A = HIGH;
 int masterLastState = LOW;
 int slaveALastState = LOW;
 int slaveBLastState = LOW;
-int masterButtonCurrentState = LOW;
+int masterButtonDebouncedState = LOW;
 int masterButtonLastState = LOW;
 unsigned long pumpStartTime;
 
 bool isPumping = false;
 bool slaveAPumping = false;
 bool slaveBPumping = false;
-bool allNotPumping = true;
+bool atLeastOnePumping = true;
 
 const int debounceDelay = 50;
-unsigned long lastDebounceTime = 0;
+unsigned long lastChangeTime = 0;
 
 
 
@@ -73,16 +74,6 @@ bool bInitialized = false;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 
-/*int rotPumpMap(int rotCLK) { //kartlägger skruvgrej X till pump X
-
-  switch (rotCLK) {
-    case ROT_CLK_A:
-      return PUMP_IN_A;
-
-    default: 
-      return -1;
-  }
-} */
 
 void displayAlignAndPrint(String text, int xAlign, int yAlign, int textSize) {
   int16_t x=0,y=0,x1,y1;
@@ -121,15 +112,18 @@ void displayAlignAndPrint(String text, int xAlign, int yAlign, int textSize) {
   display.println(text);
 }
 
-void refreshDisplay(int number) {
+void refreshDisplay(float number) {
   display.clearDisplay();
   displayAlignAndPrint(DISPLAY_UNIT, RIGHT, DOWN, DISPLAY_TEXTSIZE);
   displayAlignAndPrint(String(number),LEFT,DOWN, DISPLAY_TEXTSIZE);
   display.display();
 }
 
-int pumpDurationClToMs(int value) {
-  return value; //TBA: kalibrera med pumparna och se hur pumptid förhåller sig till volym i cl
+unsigned long pumpDurationClToMs(float volume) {
+  unsigned long t;
+  //t = (unsigned long)(1923*(volume-0.889));
+  t=1600*volume;
+  return t;
 }
 
 void sendPulse(int pin) {
@@ -139,7 +133,8 @@ void sendPulse(int pin) {
 }
 
 void firePump() {
-  if (counter!=0) {
+  targetPumpTime = pumpDurationClToMs(counter);
+  if (targetPumpTime!=0) {
     pumpStartTime = millis();
   }
 }
@@ -150,7 +145,7 @@ void stopPump() {
 
 void pumpHandler() {
 
-  if (millis() > pumpStartTime + counter) {
+  if (millis() > pumpStartTime + targetPumpTime) {
     isPumping = false;
     digitalWrite(PUMP_A, LOW);
   } else {
@@ -169,28 +164,20 @@ void signalReceived() {
 }
 
 void buttonPressed() { //för master
-  Serial.println("button pressed");
+  Serial.println("button pressed. ");
 
-  if(allNotPumping) {
+  if(!atLeastOnePumping) {
     firePump();
-    sendPulse(MASTER_OUT_A);
-    sendPulse(MASTER_OUT_B);
+    sendPulse(MASTER_TRIGGER_OUT_A);
+    sendPulse(MASTER_TRIGGER_OUT_B);
   } 
   if (slaveAPumping) {
-    sendPulse(MASTER_OUT_A);
+    sendPulse(MASTER_TRIGGER_OUT_A);
   }
   if (slaveBPumping) {
-    sendPulse(MASTER_OUT_A);
+    sendPulse(MASTER_TRIGGER_OUT_B);
   }
   if (isPumping) {
-    stopPump();
-  }
-
-  sendPulse(MASTER_OUT_A);
-  sendPulse(MASTER_OUT_B);
-  if (!isPumping) {
-    firePump();
-  } else {
     stopPump();
   }
 }
@@ -200,7 +187,7 @@ void listener() { //för sub
 }
 
 void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
-  unsigned long* counter, int* CLKlastState, int* SWlastState) {
+  float* counter, int* CLKlastState, int* SWlastState) {
     
   int CLKcurrentState = digitalRead(rotCLK);
   if (CLKcurrentState != *CLKlastState) {
@@ -215,57 +202,35 @@ void rotaryHandler(int rotCLK, int rotDT, int rotSW, int maxValue,
     // Debounce delay?
     delay(5); 
 
-    Serial.println(*counter);
     refreshDisplay(*counter);
     
   }
   
   *CLKlastState = CLKcurrentState;
-  /*
+  
   // Knapptryck
   int SWcurrentState = digitalRead(rotSW);
   if (SWcurrentState == LOW && *SWlastState == HIGH) {
     delay(20); // Debounce delay
     if (digitalRead(rotSW) == LOW) {
-      buttonPressed();
+      *counter=0;
+      refreshDisplay(*counter);
     }
   }
-  *SWlastState = SWcurrentState;*/
+  *SWlastState = SWcurrentState;
 }
 
-
-
-/*void masterHandshake() {
-
-  displayAlignAndPrint("Väntar på A...",CENTER,CENTER,DISPLAY_TEXTSIZE);
-
-  while(digitalRead(SLAVE_READY_IN_A==LOW)) {
-    sendPulse(MASTER_OUT_A);
-    delay(100);
-  }
-  display.clearDisplay();
-
-  displayAlignAndPrint("Väntar på B...",CENTER,CENTER,DISPLAY_TEXTSIZE);
-  while(digitalRead(SLAVE_READY_IN_B==LOW)) {
-    sendPulse(MASTER_OUT_B);
-    delay(100);
-  }
-  display.clearDisplay();
-
-  sendPulse(MASTER_OUT_A);
-  sendPulse(MASTER_OUT_B);
-}*/
 
 void masterInit() {
   isMaster = true;
 
   Serial.println("masterInit");
 
-  pinMode(SLAVE_READY_IN_A,INPUT);
-  pinMode(MASTER_OUT_A,OUTPUT);
+  pinMode(MASTER_READY_IN_A,INPUT);
+  pinMode(MASTER_TRIGGER_OUT_A,OUTPUT);
 
-  pinMode(SLAVE_READY_IN_B,INPUT);
-  pinMode(MASTER_OUT_B,OUTPUT);
+  pinMode(MASTER_READY_IN_B,INPUT);
+  pinMode(MASTER_TRIGGER_OUT_B,OUTPUT);
 
   pinMode(MASTER_BUTTON,INPUT);
 
@@ -279,7 +244,7 @@ void slaveInit() {
 
   Serial.println("slaveInit");
 
-  pinMode(SLAVE_IN,INPUT);
+  pinMode(SLAVE_TRIGGER_IN,INPUT);
   pinMode(SLAVE_READY_OUT,OUTPUT);
 
 
@@ -316,8 +281,8 @@ void setup() {
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
   display.setTextSize(4);
-  pinMode(SLAVE_IN,INPUT);
-  if (digitalRead(SLAVE_IN)==HIGH) { //på master arduinon är SLAVE_IN kopplad till konstant etta, därmed är detta en master-arduino
+  pinMode(SLAVE_TRIGGER_IN,INPUT);
+  if (digitalRead(SLAVE_TRIGGER_IN)==HIGH) { //på master arduinon är SLAVE_TRIGGER_IN kopplad till konstant etta, därmed är detta en master-arduino
     masterInit();
   } else { //arduinon är slave
     slaveInit();
@@ -334,12 +299,12 @@ void loop() {
       display.display();
       if (!aInitialized) {
 
-        if (digitalRead(SLAVE_READY_IN_A)==LOW) {
-          sendPulse(MASTER_OUT_A);
+        if (digitalRead(MASTER_READY_IN_A)==LOW) {
+          sendPulse(MASTER_TRIGGER_OUT_A);
           delay(100);
           Serial.println("pingar A..");
         }
-        if (digitalRead(SLAVE_READY_IN_A)==HIGH) {
+        if (digitalRead(MASTER_READY_IN_A)==HIGH) {
           aInitialized=true;
           displayAlignAndPrint("A redo",CENTER,CENTER,DISPLAY_TEXTSIZE-1);
           display.display();
@@ -348,12 +313,12 @@ void loop() {
 
       if (!bInitialized) {
 
-        if (digitalRead(SLAVE_READY_IN_B)==LOW) {
-          sendPulse(MASTER_OUT_B);
+        if (digitalRead(MASTER_READY_IN_B)==LOW) {
+          sendPulse(MASTER_TRIGGER_OUT_B);
           delay(100);
           Serial.println("pingar B..");
         }
-        if (digitalRead(SLAVE_READY_IN_B)==HIGH) {
+        if (digitalRead(MASTER_READY_IN_B)==HIGH) {
           bInitialized=true;
           displayAlignAndPrint("B redo",CENTER,DOWN,DISPLAY_TEXTSIZE-1);
           display.display();
@@ -372,27 +337,35 @@ void loop() {
     }
 
     if (initialized) { //master only, intitalized
+      int masterButtonReading = digitalRead(MASTER_BUTTON);
 
-      if (digitalRead(MASTER_BUTTON)==HIGH && masterButtonLastState==LOW) {
-        buttonPressed();
-        masterButtonLastState = HIGH;
-        delay(50);
-      }
-      if (digitalRead(MASTER_BUTTON)==LOW) {
-        masterButtonLastState = LOW;
+      if (digitalRead(MASTER_BUTTON) != masterButtonLastState) {
+        lastChangeTime = millis();
       }
 
-      if (digitalRead(MASTER_IN_A == LOW)) {
+      if ((millis()- lastChangeTime) > debounceDelay) {
+        if (masterButtonReading != masterButtonDebouncedState) {
+          masterButtonDebouncedState = masterButtonReading;
+
+          if (masterButtonDebouncedState == HIGH) {
+          buttonPressed();
+          }
+        }
+      }
+
+      masterButtonLastState= masterButtonReading;
+
+      if (digitalRead(MASTER_IN_A) == LOW) {
         slaveAPumping = false;
       } else {
         slaveAPumping = true;
       }
-      if (digitalRead(MASTER_IN_B == LOW)) {
+      if (digitalRead(MASTER_IN_B) == LOW) {
         slaveBPumping = false;
       } else {
         slaveBPumping = true;
       }
-      allNotPumping = (!slaveAPumping)&&(!slaveBPumping)&&(!isPumping);
+      atLeastOnePumping = slaveAPumping||slaveBPumping||isPumping;
     }
   }
 
@@ -403,7 +376,7 @@ void loop() {
       display.display();
     }
 
-    if (!initialized && digitalRead(SLAVE_IN) == HIGH) {
+    if (!initialized && digitalRead(SLAVE_TRIGGER_IN) == HIGH) {
       initialized = true;
       digitalWrite(SLAVE_READY_OUT,HIGH);
       masterLastState = HIGH;
@@ -411,13 +384,13 @@ void loop() {
       delay(50);
     }
 
-    if (initialized) { //slaveonly loop
+    if (initialized) { //slave only loop
       //add listener functionality
-      if (digitalRead(SLAVE_IN)==HIGH && masterLastState == LOW) {
+      if (digitalRead(SLAVE_TRIGGER_IN)==HIGH && masterLastState == LOW) {
         signalReceived();
         masterLastState = HIGH;
       }
-      if (digitalRead(SLAVE_IN) == LOW) {
+      if (digitalRead(SLAVE_TRIGGER_IN) == LOW) {
         masterLastState = LOW;
       }
 
